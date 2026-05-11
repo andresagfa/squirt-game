@@ -175,12 +175,12 @@
         }
 
         // Game variables
-        let gameState = 'start'; // start, playing, gameOver
+        let gameState = 'tutorial'; // tutorial, start, playing, gameOver
         let score = 0;
         let highScore = localStorage.getItem('toronjitoHighScore') || 0;
-        let gameSpeed = 7; // Reduced from 8 for slightly slower obstacles
+        let gameSpeed = 7; // Reduced for slower gameplay
         let gravity = 0.6;
-        let jumpPower = -14; // Increased from -12 for faster jumps
+        let jumpPower = -12; // Increased from -12 for faster jumps
         let assetsLoaded = false;
         
         highScoreElement.textContent = highScore;
@@ -211,6 +211,8 @@
                 this.velocityY = 0;
                 this.jumping = false;
                 this.grounded = false;
+                this.jumpsRemaining = 2; // Allow 2 jumps
+                this.maxJumps = 2;
                 this.animationFrame = 0;
                 this.animationSpeed = 0.2;
                 this.runFrame = 0;
@@ -228,6 +230,7 @@
                     this.velocityY = 0;
                     this.grounded = true;
                     this.jumping = false;
+                    this.jumpsRemaining = this.maxJumps; // Reset jumps when grounded
                 } else {
                     this.grounded = false;
                 }
@@ -240,10 +243,11 @@
             }
 
             jump() {
-                if (this.grounded) {
+                if (this.jumpsRemaining > 0) {
                     this.velocityY = jumpPower;
                     this.jumping = true;
                     this.grounded = false;
+                    this.jumpsRemaining--;
                 }
             }
 
@@ -410,7 +414,27 @@
             if (e.type === 'keydown' && e.code !== 'Space') return;
             e.preventDefault();
             
-            if (gameState === 'start') {
+            if (gameState === 'tutorial') {
+                // Check if continue button was clicked
+                if (e.type === 'click') {
+                    const rect = canvas.getBoundingClientRect();
+                    const x = e.clientX - rect.left;
+                    const y = e.clientY - rect.top;
+                    
+                    // Check if click is on continue button
+                    if (x >= canvas.width / 2 - 75 && x <= canvas.width / 2 + 75 &&
+                        y >= canvas.height / 2 + 100 && y <= canvas.height / 2 + 140) {
+                        gameState = 'start';
+                        updateUIVisibility();
+                        return;
+                    }
+                }
+                // Space key also continues
+                if (e.type === 'keydown') {
+                    gameState = 'start';
+                    updateUIVisibility();
+                }
+            } else if (gameState === 'start') {
                 gameState = 'playing';
                 updateUIVisibility();
                 player.jump();
@@ -461,8 +485,8 @@
             corcholatas = [];
             score = 0;
             scoreElement.textContent = score;
-            gameSpeed = 7; // Reset with slightly slower speed
-            gameState = 'start';
+            gameSpeed = 5; // Reset with slower speed
+            gameState = 'tutorial';
             updateUIVisibility();
         }
 
@@ -548,6 +572,56 @@
             if (assetsLoaded && assets.bushes.complete) {
                 ctx.drawImage(assets.bushes, 0, canvas.height - 180, canvas.width, 60);
             }
+        }
+
+        function drawTutorialScreen() {
+            // Semi-transparent overlay
+            ctx.fillStyle = 'rgba(0, 0, 0, 0.8)';
+            ctx.fillRect(0, 0, canvas.width, canvas.height);
+            
+            // Tutorial box
+            ctx.fillStyle = 'rgba(255, 255, 255, 0.95)';
+            ctx.fillRect(canvas.width / 2 - 250, canvas.height / 2 - 150, 500, 300);
+            
+            // Border
+            ctx.strokeStyle = '#333';
+            ctx.lineWidth = 3;
+            ctx.strokeRect(canvas.width / 2 - 250, canvas.height / 2 - 150, 500, 300);
+            
+            // Title
+            ctx.fillStyle = '#333';
+            ctx.font = 'bold 28px Arial';
+            ctx.textAlign = 'center';
+            ctx.fillText('¿Cómo Jugar?', canvas.width / 2, canvas.height / 2 - 100);
+            
+            // Tutorial text
+            ctx.font = '18px Arial';
+            ctx.fillStyle = '#555';
+            ctx.textAlign = 'left';
+            
+            const instructions = [
+                '• Pulsa la barra espaciadora para saltar',
+                '• Pulsa de nuevo en el aire para hacer un doble salto',
+                '• Colecciona la mayor cantidad de monedas',
+                '• Evita tocar las botellas o el juego terminará',
+                '',
+                '¡Buena suerte y diviértete!'
+            ];
+            
+            let yPosition = canvas.height / 2 - 50;
+            instructions.forEach(instruction => {
+                ctx.fillText(instruction, canvas.width / 2 - 220, yPosition);
+                yPosition += 25;
+            });
+            
+            // Continue button
+            ctx.fillStyle = '#4CAF50';
+            ctx.fillRect(canvas.width / 2 - 75, canvas.height / 2 + 100, 150, 40);
+            ctx.fillStyle = 'white';
+            ctx.font = 'bold 20px Arial';
+            ctx.textAlign = 'center';
+            ctx.textBaseline = 'middle';
+            ctx.fillText('CONTINUAR', canvas.width / 2, canvas.height / 2 + 120);
         }
 
         function drawStartScreen() {
@@ -644,7 +718,9 @@
             player.draw();
             
             // Draw UI based on game state
-            if (gameState === 'start') {
+            if (gameState === 'tutorial') {
+                drawTutorialScreen();
+            } else if (gameState === 'start') {
                 drawStartScreen();
             } else if (gameState === 'gameOver') {
                 drawGameOverScreen();
